@@ -12,7 +12,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/Users/studio/.claude/hooks/gsd-check-update.js\""
+            "command": "node \"$HOME/.claude/hooks/gsd-check-update.js\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.claude/hooks/detect-video.sh\"",
+            "timeout": 5
           }
         ]
       }

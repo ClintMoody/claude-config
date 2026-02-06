@@ -14,6 +14,7 @@ echo "🔧 Installing Claude configuration..."
 # Create .claude directory if it doesn't exist
 mkdir -p "$CLAUDE_DIR"
 mkdir -p "$CLAUDE_DIR/hooks"
+mkdir -p "$CLAUDE_DIR/commands"
 
 # Backup existing files
 backup_if_exists() {
@@ -46,6 +47,16 @@ for hook in "$SCRIPT_DIR/hooks/"*; do
         cp "$hook" "$CLAUDE_DIR/hooks/$hookname"
         chmod +x "$CLAUDE_DIR/hooks/$hookname"
         echo "  ✓ Installed hooks/$hookname"
+    fi
+done
+
+# Install commands (slash commands)
+for cmd in "$SCRIPT_DIR/commands/"*; do
+    if [ -f "$cmd" ]; then
+        cmdname=$(basename "$cmd")
+        backup_if_exists "$CLAUDE_DIR/commands/$cmdname"
+        cp "$cmd" "$CLAUDE_DIR/commands/$cmdname"
+        echo "  ✓ Installed commands/$cmdname"
     fi
 done
 
