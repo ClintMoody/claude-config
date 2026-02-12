@@ -1,0 +1,9 @@
+{
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "input=$(cat); remaining=$(echo \"$input\" | jq -r '.context_window.remaining_percentage // empty'); [ -n \"$remaining\" ] && printf \"Context: %.0f%% remaining\" \"$remaining\""
+  }
+}
