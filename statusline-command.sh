@@ -177,17 +177,23 @@ generate_bar() {
     local empty=$((width - filled))
     local bar=""
 
+    # Color the entire bar based on overall usage level
+    # Green → Yellow → Orange → Red, with red starting at 50%
+    local bar_color
+    if [ "$percent" -ge 90 ]; then
+        bar_color="${BLINK}${NEON_RED}"
+    elif [ "$percent" -ge 70 ]; then
+        bar_color="${NEON_RED}"
+    elif [ "$percent" -ge 50 ]; then
+        bar_color="${NEON_ORANGE}"
+    elif [ "$percent" -ge 35 ]; then
+        bar_color="${NEON_YELLOW}"
+    else
+        bar_color="${NEON_GREEN}"
+    fi
+
     for ((i=0; i<filled; i++)); do
-        local pos=$((i * 100 / width))
-        if [ $pos -lt 25 ]; then
-            bar="${bar}${NEON_CYAN}${BLOCK_FULL}"
-        elif [ $pos -lt 50 ]; then
-            bar="${bar}${NEON_GREEN}${BLOCK_FULL}"
-        elif [ $pos -lt 75 ]; then
-            bar="${bar}${NEON_YELLOW}${BLOCK_FULL}"
-        else
-            bar="${bar}${NEON_RED}${BLOCK_FULL}"
-        fi
+        bar="${bar}${bar_color}${BLOCK_FULL}"
     done
 
     for ((i=0; i<empty; i++)); do
@@ -244,33 +250,44 @@ fi
 # Convert to integer
 used_int=$(printf "%.0f" "$used")
 
+# Calculate context window token counts (current loaded vs capacity)
+context_loaded=$((current_input + current_output + current_cache_write + current_cache_read))
+if [ "$used_int" -gt 0 ] && [ "$context_loaded" -gt 0 ] 2>/dev/null; then
+    context_max=$(echo "scale=0; $context_loaded * 100 / $used_int" | bc 2>/dev/null || echo "0")
+else
+    context_max=0
+fi
+ctx_loaded_fmt=$(format_tokens $context_loaded)
+ctx_max_fmt=$(format_tokens $context_max)
+
 # Generate the progress bar
 bar=$(generate_bar $used_int)
 
 # Determine status icon and color based on usage
+# Red zone starts at 50% as a reminder to clear context
 if [ "$used_int" -ge 90 ]; then
     icon="${BLINK}${NEON_RED}${SKULL}${RESET}"
     pct_color="${BLINK}${BOLD}${NEON_RED}"
     tip=" ${DIM}→/compact${RESET}"
-elif [ "$used_int" -ge 80 ]; then
-    icon="${NEON_ORANGE}${FIRE}${RESET}"
-    pct_color="${BOLD}${NEON_ORANGE}"
+elif [ "$used_int" -ge 70 ]; then
+    icon="${NEON_RED}${FIRE}${RESET}"
+    pct_color="${BOLD}${NEON_RED}"
+    tip=" ${DIM}→/compact${RESET}"
+elif [ "$used_int" -ge 50 ]; then
+    icon="${NEON_ORANGE}${BOLT}${RESET}"
+    pct_color="${NEON_ORANGE}"
     tip=""
-elif [ "$used_int" -ge 60 ]; then
-    icon="${NEON_YELLOW}${BOLT}${RESET}"
+elif [ "$used_int" -ge 35 ]; then
+    icon="${NEON_YELLOW}${BRAIN}${RESET}"
     pct_color="${NEON_YELLOW}"
     tip=""
-elif [ "$used_int" -ge 40 ]; then
-    icon="${NEON_GREEN}${BRAIN}${RESET}"
+elif [ "$used_int" -ge 15 ]; then
+    icon="${NEON_GREEN}${ROCKET}${RESET}"
     pct_color="${NEON_GREEN}"
     tip=""
-elif [ "$used_int" -ge 20 ]; then
-    icon="${NEON_CYAN}${ROCKET}${RESET}"
-    pct_color="${NEON_CYAN}"
-    tip=""
 else
-    icon="${NEON_MAGENTA}${SPARK}${RESET}"
-    pct_color="${NEON_MAGENTA}"
+    icon="${NEON_GREEN}${SPARK}${RESET}"
+    pct_color="${NEON_GREEN}"
     tip=""
 fi
 
@@ -286,7 +303,11 @@ month_label=$(date +%b)
 # ─────────────────────────────────────────────────────────────────────────────
 # Format: [icon] ▐███░░░░░░░░░▌ 45% │ 💰$1.23 session │ 📊$45.67 Feb API │ 12K↓ 3K↑
 
-printf "${icon} ${BAR_START}${bar}${BAR_END} ${pct_color}%3d%%${RESET}" "$used_int"
+if [ "$context_max" -gt 0 ] 2>/dev/null; then
+    printf "${icon} ${BAR_START}${bar}${BAR_END} ${pct_color}%3d%%${RESET} ${DIM}${ctx_loaded_fmt}/${ctx_max_fmt}${RESET}" "$used_int"
+else
+    printf "${icon} ${BAR_START}${bar}${BAR_END} ${pct_color}%3d%%${RESET}" "$used_int"
+fi
 printf " ${DIM}${SEP}${RESET} ${NEON_GOLD}${MONEY}\$${session_cost_fmt}${RESET}"
 printf " ${DIM}${SEP}${RESET} ${NEON_PINK}${CHART}\$${monthly_fmt}${RESET} ${DIM}${month_label} API${RESET}"
 printf " ${DIM}${SEP}${RESET} ${NEON_CYAN}${tokens_in_fmt}↓${RESET}${NEON_LIME}${tokens_out_fmt}↑${RESET}"
